@@ -11,8 +11,8 @@
 #add question trends
 #check phs guidance
 #order all variables
-#add Scotland comparison
-#add scotland comparison title
+#re do (remove?) wrapping on indicator label
+
 
 library(shiny)
 library(tidyverse)
