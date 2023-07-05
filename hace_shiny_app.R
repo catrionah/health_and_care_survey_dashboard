@@ -8,11 +8,13 @@
 #
 #to do: 
 #tidy response rates
-#add question trends
 #check phs guidance
 #order all variables
-#re do (remove?) wrapping on indicator label
-
+#maintain comparator when scotland is selected
+#explore use of plotly
+#make select question line bigger
+#add more levels
+#add tabs for additional dashboards
 
 library(shiny)
 library(tidyverse)
@@ -42,79 +44,70 @@ ui_hace <- fluidPage(
             ),
       # Include the summary table
       column(3,
+            strong("Summary statistics for this specific report:"),
+            br(),
+            br(),
             tableOutput("summary_table")
              )),
       
       # Create a spot for the question barplot
   h3("Percentage of positive, neutral and negative responses"),
   fluidRow(),
-  fluidRow(      
-    plotOutput("percent_pnn_plot", height = 400, width = 700,
-               click = "percent_pnn_click", )
-          ),
+  fluidRow(column(8,
+          plotOutput("percent_pnn_plot"))),     
+   
+  br(),
   fluidRow(      
     # Define the dropdowns
-    column(10,
-           selectInput(inputId = "Label",label = "Select a question to compare to Scotland and display a time trend for all surveys since 2014 where questions are comparable.", 
+    column(12,
+           strong("Select a question to compare to Scotland and display a time trend for all surveys since 2014 where questions are comparable"),
+           selectInput(inputId = "Label",label = "", 
                        choices=unique(rag_chart_pct$question_labels),
-                       selected = "10: Overall, how would you rate the care\nprovided by your GP practice?")
+                       selected = "10: Overall, how would you rate the care provided by your GP practice?")
           )),
-  # header for the comparison to scotland section
-  h3("Comparison to Scotland (per cent positive results)"),
+  # header for the comparison section
+  h3(textOutput("question_text")),
     fluidRow(   
-      column(5,
-             verbatimTextOutput("question_text"),
-             verbatimTextOutput("significance_scot"),
-             verbatimTextOutput("percent_pnn_click_output"),
-            ),
-      column(5,
+          column(2,
+                 span(textOutput("header_Scotland"),style = "color:blue; font-size:14px; font-family:arial; font-style:bold"),
+                 br(),
+                 textOutput("significance_scot"),
+                ),
+          column(2,
                  plotOutput("Scotland_plot")
-                 ),
+                ),
+          column(2,
+               span(textOutput("header_trend"),style = "color:blue; font-size:14px; font-family:arial; font-style:bold"),
+               br(),
+               textOutput("significance_2020"),
+               br(),
+               p("Blank values for years 2014 - 2020 in the time trend indicate that the question was not asked in that survey or that the question was not comparable")
+                ),
+            column(2,
+               plotOutput("trend_plot")
+               )
+          ))
 
-          ),
-# Create a spot for the trend plot
-h3("Time trend (per cent positive results)"),
-fluidRow(  
-  column(5,
-         verbatimTextOutput("question_text_trend"),
-         verbatimTextOutput("significance_2020"),
-         p("Blank values for years 2014 - 2020 in the time trend indicate that the question was not asked in that survey or that the question was not comparable")
-  ),
-  column(5,
-         plotOutput("trend_plot")
-  ),
-  
-)
-)
 
 
 # Define server logic required to draw a histogram
 
 server_hace <- function(input, output, session) {
-  # Fill in the spot we created for a plot
-output$response_rate <- renderPrint({
-    paste0(round(as.numeric(mean(rag_chart_pct$Response_Rate_perc[rag_chart_pct$Report_Area == input$Report_Area])),0),"%")
-    }) 
-output$response_number <- renderPrint({
-    as.numeric(first(rag_chart_pct$N_IncludedResponses[rag_chart_pct$Report_Area == input$Report_Area]))
-  }) 
-output$forms_number <- renderPrint({
-    as.numeric(first(rag_chart_pct$sample_size[rag_chart_pct$Report_Area == input$Report_Area]))
-  }) 
-  # Fill in the spot we created for a plot
+
 output$percent_pnn_plot <- renderPlot({
     selectedData <- rag_chart_pct%>%
       filter(Report_Area == input$Report_Area & Level == input$Level & year == "2022")
       
     # Render the question barplot
     ggplot(selectedData,  aes(x=question_labels,y=Wgt_Percent,fill = PNN)) +
-      labs(title = selectedData$Report_Area) +
+      labs(title = selectedData$Report_Area,
+           caption = "The number of responses is given in blue") +
       geom_col() + 
       scale_fill_manual(values=c("#0078D4","#AF69A9","#3F3685"))+
       geom_text(data=selectedData, aes(x = question_labels, y = cumulative_percent-Wgt_Percent/2-2,
                                     label = paste0(round(Wgt_Percent,0),"%"),colour = PNN, hjust = 0,size = 14),show.legend = FALSE)+
       annotate(geom = "text", x = selectedData$question_labels, y = -0.5, 
-               label = selectedData$N_IncludedResponses, hjust = +1.2, vjust = 0, size = 5) +
+               label = format(selectedData$N_IncludedResponses, nsmall=1, big.mark=","), hjust = +1.2, vjust = 0, size = 5,colour = "#0078D4") +
       scale_colour_manual(values=c("black","black","white"))+
       coord_flip(clip = 'off', expand = 0)  + 
       theme(legend.position = "top",
@@ -127,7 +120,8 @@ output$percent_pnn_plot <- renderPlot({
             axis.ticks.x = element_blank(),
             axis.text.x=element_blank(),
             text=element_text(size=16),
-            axis.text.y = element_text(margin = margin(r = 70))) +
+            axis.text.y = element_text(margin = margin(r = 70)),
+            plot.caption = element_text(color = "#0078D4"))+
       guides(fill = guide_legend(reverse = TRUE))
   })
   
@@ -137,12 +131,12 @@ output$Scotland_plot <- renderPlot({
                ((Report_Area == input$Report_Area & Level == input$Level)|
                  (Report_Area == "Scotland" & Level == "Scotland")))
 ggplot(scot_compare, aes(x=Report_Area,y=Wgt_Percent,fill = Level)) +
-      geom_col() + 
+      geom_col(width = 0.5) + 
       scale_fill_manual(values=c("#655E9D","#3F3685"),expand=0)+
+      labs(title = scot_compare$year) +
       geom_text(data=scot_compare, aes(x = Report_Area, y = Wgt_Percent/2,
                                        label = paste0(round(Wgt_Percent,0),"%"),colour = "white",  hjust = +0.5,size = 14),show.legend = FALSE)+
-      scale_colour_manual(values="white")+
-      coord_cartesian(ylim=c(0,70), expand = FALSE ) +
+      scale_colour_manual(values="white") +
       theme(panel.background = element_rect(fill='transparent'),
             axis.line.y = element_line("grey"),
             axis.line.x = element_line("grey"),
@@ -150,56 +144,73 @@ ggplot(scot_compare, aes(x=Report_Area,y=Wgt_Percent,fill = Level)) +
             axis.ticks.y = element_blank(),
             axis.title.x = element_blank(),
             axis.ticks.x = element_blank(),
-            text=element_text(size=16))+
+            axis.text.y = element_blank(),
+            text=element_text(size=16),
+            plot.title.position = "plot",   
+            plot.title = element_text(hjust = 0.5))+
       guides(fill="none")
   })
-output$question_text <- renderPrint({
-    as.character(rag_chart_pct$question_labels[rag_chart_pct$PNN == "Positive" & rag_chart_pct$question_labels == input$Label 
-                                               & rag_chart_pct$year == "2022" & rag_chart_pct$Report_Area == input$Report_Area])
+
+
+output$header_Scotland <- renderText({
+  paste0("Comparison to Scotland (per cent positive results): ",input$Report_Area)
+}) 
+output$question_text <- renderText({
+    input$Label
   }) 
   
-output$significance_scot <- renderPrint({
-    as.character(rag_chart_pct$Significance_Scot[rag_chart_pct$PNN == "Positive" & rag_chart_pct$question_labels == input$Label 
-                                              & rag_chart_pct$year == "2022" & rag_chart_pct$Report_Area == input$Report_Area])
+output$significance_scot <- renderText({
+  paste0(input$Report_Area,": ",as.character(rag_chart_pct$Significance_Scot[rag_chart_pct$PNN == "Positive" & rag_chart_pct$question_labels == input$Label 
+                                              & rag_chart_pct$year == "2022" & rag_chart_pct$Report_Area == input$Report_Area]))
   }) 
+
+output$header_trend <- renderText({
+  paste0("Time trend (per cent positive results): ",input$Report_Area)
+}) 
+
+output$significance_2020 <- renderText({
+  paste0(input$Report_Area,": ",as.character(rag_chart_pct$Significance_2020[rag_chart_pct$PNN == "Positive" & rag_chart_pct$question_labels == input$Label 
+                                               & rag_chart_pct$year == "2022" & rag_chart_pct$Report_Area == input$Report_Area]))
+}) 
 output$trend_plot <- renderPlot({
     trend_data <- rag_chart_pct %>%
       filter(PNN == "Positive" & question_labels == input$Label &
                (Report_Area == input$Report_Area & Level == input$Level))
     
     ggplot(trend_data, aes(x=year,y=Wgt_Percent,fill = Level)) +
-      geom_col() + 
+      geom_col(width = 0.9) + 
       labs(title = trend_data$Report_Area) +
       scale_fill_manual(values=c("#3F3685","#3F3685"))+
       geom_text(data=trend_data, aes(x = year, y = Wgt_Percent/2,
                                      label = paste0(round(Wgt_Percent,0),"%"),colour = "white", hjust = +0.5,size = 14),show.legend = FALSE)+
       scale_colour_manual(values="white")+
-      theme(axis.title.y = element_blank(),
+      theme(panel.background = element_rect(fill='transparent'),
+            axis.title.y = element_blank(),
             axis.ticks.y = element_blank(),
             axis.title.x = element_blank(),
-            axis.line.x = element_blank(),
+            axis.line.y = element_line("grey"),
+            axis.line.x = element_line("grey"),
             axis.ticks.x = element_blank(),
-            text=element_text(size=16))+
+            axis.text.y = element_blank(),
+            text=element_text(size=16),
+            plot.title.position = "plot",   
+            plot.title = element_text(hjust = 0.5))+
       guides(fill="none")
   })
-output$question_text_trend <- renderPrint({
-  as.character(rag_chart_pct$question_labels[rag_chart_pct$PNN == "Positive" & rag_chart_pct$question_labels == input$Label 
-                                             & rag_chart_pct$year == "2022" & rag_chart_pct$Report_Area == input$Report_Area])
+output$question_text_trend <- renderText({
+  input$Label
 }) 
-output$significance_2020 <- renderPrint({
-  as.character(rag_chart_pct$Significance_2020[rag_chart_pct$PNN == "Positive" & rag_chart_pct$question_labels == input$Label 
-                                               & rag_chart_pct$year == "2022" & rag_chart_pct$Report_Area == input$Report_Area])
-  
+
 output$summary_table <- renderTable({
   summary_data <- data.frame(
     "indicator" = c("Response rate", "Number of responses","Number of forms sent out"),
     "value" = c(paste0(round(as.numeric(mean(rag_chart_pct$Response_Rate_perc[rag_chart_pct$Report_Area == input$Report_Area])),0),"%"),
-                as.numeric(first(rag_chart_pct$N_IncludedResponses[rag_chart_pct$Report_Area == input$Report_Area])),
-                as.numeric(first(rag_chart_pct$sample_size[rag_chart_pct$Report_Area == input$Report_Area])))
+                format(first(rag_chart_pct$N_IncludedResponses[rag_chart_pct$Report_Area == input$Report_Area]),nsmall=1, big.mark=","),
+                format(first(rag_chart_pct$sample_size[rag_chart_pct$Report_Area == input$Report_Area]),nsmall=0, big.mark=","))
                             )
     tibble::tibble(summary_data)
-    })
-}) 
+    }, colnames = FALSE,)
+
 observe({
     updateSelectInput(session, "Report_Area", choices = as.character(rag_chart_pct$Report_Area[rag_chart_pct$Level == input$Level]))
   })
