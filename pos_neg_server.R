@@ -1,77 +1,24 @@
-# This is a Shiny web application. You can run the application by clicking
-# the 'Run App' button above.
-#
-# Name of file: hace_shiny_app_
-# Original author: Catriona Haddow
-#   
-# Written/run on Posit Workbench - RStudio R4.1.2
-# 
-# This app creates the most positive and negative dashboard of the HACE Survey 2022
-# 
-# Approximate run time: < 1 minute
-# Approximate memory usage: 342 MiB
-
-#to do: 
-
-library(shiny)
-library(tidyverse)
+#import most positive and negative data
+Pos_neg <- readRDS("/conf/bss/survey_shiny/data/Pos_neg.rds")
 
 
-# Define UI for application that draws a histogram
-ui_hace <- fluidPage(
-  
-  # Application title
-  titlePanel("2022 - Most positive and negative experience ratings"),
-  p("This dashboard presents the questions in the 2022 survey which received the five most positive and the five most negative experience ratings for selected report areas.
-  For each question, responses have been categories as positive, neutral or negative. For further information, please refer to the technical report."),
-  br(),
-  p("The survey sections included in this dashboard are: The GP Practice; Treatemnt or Advice from the GP Practice; Out of Hours Healthcare; Care, Support and Help with Everyday Living; Caring Responsibilities."),
-  br(),
-  p("At Scotland, NHS Board and Health and Social Care Partnership level, results are available for all sections."),
-  br(),
-  p("At GP Practice and GP Cluster level, results are available for questions: The GP Practice; Treatment or Advice from the GP Practice."),
-  hr(),
-  
-  # Generate the layout
-  fluidRow(      
-    
-    # Define the dropdowns
-    column(4,
-           selectInput(inputId = "Level",label = "Select report level:", 
-                       choices=unique(Pos_neg$Level),
-                       selected = "Scotland"),
-           selectInput(inputId = "Report_Area",label = "Select a specific report:", 
-                       choices=unique(Pos_neg$Report_Area),
-                       selected = "Scotland")
-    ),
-    # Include the summary table
-    column(3,
-           strong("Summary statistics for this specific report:"),
-           br(),
-           br(),
-           tableOutput("summary_table")
-    )),
-  
-  # Create a spot for the most positive barplot
-  h3("Most positive results"),
-  fluidRow(),
-  fluidRow(column(8,
-                  plotOutput("most_pos_plot"))),
-  
-  # Create a spot for the most positive barplot
-  h3("Most negative results"),
-  fluidRow(),
-  fluidRow(column(8,
-                  plotOutput("most_neg_plot"))),
-)
+Pos_neg <- Pos_neg %>%
+  pivot_longer(names_to = "Indicator",values_to = "Wgt_Percent",cols = starts_with("Wgt_Percent"))%>%
+  mutate(year = substr(Indicator,regexpr("[[:digit:]]",Indicator),regexpr("[[:digit:]]",Indicator)+4),
+         PNN = substr(Indicator,regexpr("Percent",Indicator)+7,regexpr("_[[:digit:]]",Indicator)-1))%>%
+  filter(!PNN == "Positive_Scot")%>%
+  filter(Level %in% c("Scotland","Health Board"))%>%
+  group_by(Level, Report_Area,Question_2022)%>%
+  mutate(cumulative_percent = cumsum(Wgt_Percent),
+         question_labels = str_wrap(paste0(Question_2022,": ",Question_text), width = 80))%>%
+  arrange(Level, Report_Area,question_labels) %>% 
+  mutate(question_labels=fct_reorder(question_labels,Question_2022))
 
 
 # Define server logic####
 
-server_hace <- function(input, output, session) {
-  
-  #create response rate table####
-  output$summary_table <- renderTable({
+#create response rate table####
+  output$summary_table_pn <- renderTable({
     summary_data <- data.frame(
       "indicator" = c("Response rate", "Number of responses","Number of forms sent out"),
       "value" = c(paste0(round(as.numeric(mean(Pos_neg$Response_Rate_perc[Pos_neg$Report_Area == input$Report_Area])),0),"%"),
@@ -148,13 +95,12 @@ server_hace <- function(input, output, session) {
       guides(fill = guide_legend(reverse = TRUE))
   }) 
   
-  #define reactive text####
-  output$header_Scotland <- renderText({
-    paste0("Comparison to Scotland (per cent positive results): ",input$Report_Area)
-  }) 
   #update report area dropdown boxes to reflect report level selection####
   observe({
     updateSelectInput(session, "Report_Area", choices = as.character(Pos_neg$Report_Area[Pos_neg$Level == input$Level]))
   })
-} 
+
+
+
+
 
