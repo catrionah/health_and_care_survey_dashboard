@@ -24,10 +24,10 @@ summaryTab <- tabPanel("Summary", icon = icon("list-ul"), value = "summary",
       # Define the dropdowns
       column(4,
         selectInput(inputId = "Level",label = "Select report level:", 
-                    choices=unique(rag_chart_pct$Level),
+                    choices=unique(rag_chart$Level),
                     selected = "Scotland"),
         selectInput(inputId = "Report_Area",label = "Select a specific report:", 
-                    choices=unique(rag_chart_pct$Report_Area),
+                    choices=unique(rag_chart$Report_Area),
                     selected = "Scotland")
             ),
       # Include the summary table
@@ -50,7 +50,7 @@ summaryTab <- tabPanel("Summary", icon = icon("list-ul"), value = "summary",
     column(12,
            strong("Select a question to compare to Scotland and display a time trend for all surveys since 2014 where questions are comparable:"),
            selectInput(inputId = "Label",label = "", 
-                       choices=unique(rag_chart_pct$question_labels),
+                       choices=unique(rag_chart$question_labels),
                        selected = "10: Overall, how would you rate the care provided by your GP practice?")
           )),
   # header for the comparison section

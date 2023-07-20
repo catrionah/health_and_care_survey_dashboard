@@ -1,12 +1,11 @@
 
 #import HACE data
 rag_chart <- readRDS("/conf/bss/survey_shiny/data/rag_chart.rds")
-rag_chart_pct <- rag_chart %>%
+rag_chart <- rag_chart %>%
   pivot_longer(names_to = "Indicator",values_to = "Wgt_Percent",cols = starts_with("Wgt_Percent"))%>%
   mutate(year = substr(Indicator,regexpr("[[:digit:]]",Indicator),regexpr("[[:digit:]]",Indicator)+4),
          PNN = substr(Indicator,regexpr("Percent",Indicator)+7,regexpr("_[[:digit:]]",Indicator)-1))%>%
   filter(!PNN == "Positive_Scot")%>%
-  filter(Level %in% c("Scotland","Health Board"))%>%
   filter(Question_2022 %in% c("10","13b","13d","27","33","38a"))%>%
   group_by(Level, Report_Area,Question_2022)%>%
   mutate(cumulative_percent = cumsum(Wgt_Percent),
@@ -19,16 +18,16 @@ rag_chart_pct <- rag_chart %>%
   output$summary_table <- renderTable({
     summary_data <- data.frame(
       "indicator" = c("Response rate", "Number of responses","Number of forms sent out"),
-      "value" = c(paste0(round(as.numeric(mean(rag_chart_pct$Response_Rate_perc[rag_chart_pct$Report_Area == input$Report_Area])),0),"%"),
-                  format(first(rag_chart_pct$N_IncludedResponses[rag_chart_pct$Report_Area == input$Report_Area]),nsmall=1, big.mark=","),
-                  format(first(rag_chart_pct$sample_size[rag_chart_pct$Report_Area == input$Report_Area]),nsmall=0, big.mark=","))
+      "value" = c(paste0(round(as.numeric(mean(rag_chart$Response_Rate_perc[rag_chart$Report_Area == input$Report_Area])),0),"%"),
+                  format(first(rag_chart$N_IncludedResponses[rag_chart$Report_Area == input$Report_Area]),nsmall=1, big.mark=","),
+                  format(first(rag_chart$sample_size[rag_chart$Report_Area == input$Report_Area]),nsmall=0, big.mark=","))
     )
     tibble::tibble(summary_data)
   }, colnames = FALSE,)
   
   #create question chart####
   output$percent_pnn_plot <- renderPlot({
-    selectedData <- rag_chart_pct%>%
+    selectedData <- rag_chart%>%
       filter(Report_Area == input$Report_Area & Level == input$Level & year == "2022")
     
     # Render the question barplot
@@ -71,8 +70,8 @@ rag_chart_pct <- rag_chart %>%
   }) 
   
   output$significance_scot <- renderText({
-    paste0(input$Report_Area,": ",as.character(rag_chart_pct$Significance_Scot[rag_chart_pct$PNN == "Positive" & rag_chart_pct$question_labels == input$Label 
-                                                                               & rag_chart_pct$year == "2022" & rag_chart_pct$Report_Area == input$Report_Area]))
+    paste0(input$Report_Area,": ",as.character(rag_chart$Significance_Scot[rag_chart$PNN == "Positive" & rag_chart$question_labels == input$Label 
+                                                                               & rag_chart$year == "2022" & rag_chart$Report_Area == input$Report_Area]))
   }) 
   
   output$header_trend <- renderText({
@@ -80,8 +79,8 @@ rag_chart_pct <- rag_chart %>%
   }) 
   
   output$significance_2020 <- renderText({
-    paste0(input$Report_Area,": ",as.character(rag_chart_pct$Significance_2020[rag_chart_pct$PNN == "Positive" & rag_chart_pct$question_labels == input$Label 
-                                                                               & rag_chart_pct$year == "2022" & rag_chart_pct$Report_Area == input$Report_Area]))
+    paste0(input$Report_Area,": ",as.character(rag_chart$Significance_2020[rag_chart$PNN == "Positive" & rag_chart$question_labels == input$Label 
+                                                                               & rag_chart$year == "2022" & rag_chart$Report_Area == input$Report_Area]))
   }) 
   
   output$question_text_trend <- renderText({
@@ -90,7 +89,7 @@ rag_chart_pct <- rag_chart %>%
   
   #create comparison to Scotland chart####
   output$Scotland_plot <- renderPlot({
-    scot_compare <- rag_chart_pct %>%
+    scot_compare <- rag_chart %>%
       filter(PNN == "Positive" & question_labels == input$Label & year == "2022" &
                ((Report_Area == input$Report_Area & Level == input$Level)|
                   (Report_Area == "Scotland" & Level == "Scotland")))
@@ -118,7 +117,7 @@ rag_chart_pct <- rag_chart %>%
   
   #create trend chart####
   output$trend_plot <- renderPlot({
-    trend_data <- rag_chart_pct %>%
+    trend_data <- rag_chart %>%
       filter(PNN == "Positive" & question_labels == input$Label &
                (Report_Area == input$Report_Area & Level == input$Level))
     
@@ -146,5 +145,5 @@ rag_chart_pct <- rag_chart %>%
   
   #update report area dropdown boxes to reflect report level selection####
   observe({
-    updateSelectInput(session, "Report_Area", choices = as.character(rag_chart_pct$Report_Area[rag_chart_pct$Level == input$Level]))
+    updateSelectInput(session, "Report_Area", choices = as.character(rag_chart$Report_Area[rag_chart$Level == input$Level]))
   })
