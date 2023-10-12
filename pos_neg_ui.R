@@ -1,7 +1,5 @@
-# This is a Shiny web application. You can run the application by clicking
-# the 'Run App' button above.
-#
-# Name of file: hace_shiny_app_
+
+# Name of file: pos_neg_ui.R
 # Original author: Catriona Haddow
 #   
 # Written/run on Posit Workbench - RStudio R4.1.2
@@ -18,7 +16,7 @@ posnegTab <- tabPanel("Most positive and most negative", icon = icon("list-ul"),
   # Application title
   titlePanel("2022 - Most positive and negative experience ratings"),
   p("This dashboard presents the questions in the 2022 survey which received the five most positive and the five most negative experience ratings for selected report areas.
-  For each question, responses have been categories as positive, neutral or negative. For further information, please refer to the technical report."),
+  For each question, responses have been categorised as positive, neutral or negative. For further information, please refer to the technical report."),
   br(),
   p("The survey sections included in this dashboard are: The GP Practice; Treatment or Advice from the GP Practice; Out of Hours Healthcare; Care, Support and Help with Everyday Living; Caring Responsibilities."),
   br(),
