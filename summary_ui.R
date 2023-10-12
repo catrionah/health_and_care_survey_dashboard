@@ -48,7 +48,7 @@ summaryTab <- tabPanel("Summary", icon = icon("list-ul"), value = "summary",
   fluidRow(      
     # Define the question dropdown
     column(12,
-           strong("Select a question to compare to Scotland and display a time trend for all surveys since 2014 where questions are comparable:"),
+           em("Select a question to compare to Scotland and display a time trend for all surveys since 2014 where questions are comparable:"),
            selectInput(inputId = "Label",label = "", 
                        choices=unique(rag_chart$question_labels),
                        selected = "10: Overall, how would you rate the care provided by your GP practice?")
